@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>WebRTC Video Streaming</title>
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; }
+        video { width: 50%; border: 2px solid black; margin: 10px; }
+    </style>
+</head>
+<body>
+    <h2>WebRTC Video Streaming</h2>
+    <div>
+        <video id="localVideo" autoplay playsinline></video>
+        <video id="remoteVideo" autoplay playsinline></video>
+    </div>
+
+    <input type="text" id="peerIdInput" placeholder="Enter Peer ID">
+    <button onclick="callPeer()">Call</button>
+    <p>Your ID: <span id="myPeerId"></span></p>
+
+    <script>
+        const localVideo = document.getElementById("localVideo");
+        const remoteVideo = document.getElementById("remoteVideo");
+        const peerIdInput = document.getElementById("peerIdInput");
+        const myPeerIdDisplay = document.getElementById("myPeerId");
+
+        // Create a PeerJS connection
+        const peer = new Peer();
+
+        peer.on("open", (id) => {
+            myPeerIdDisplay.textContent = id; // Show user ID
+        });
+
+        // Get user media (camera input)
+        navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+            .then((stream) => {
+                localVideo.srcObject = stream;
+
+                // Answer incoming call
+                peer.on("call", (call) => {
+                    call.answer(stream); // Send local stream
+                    call.on("stream", (remoteStream) => {
+                        remoteVideo.srcObject = remoteStream; // Display received stream
+                    });
+                });
+            });
+
+        function callPeer() {
+            const peerId = peerIdInput.value;
+            const call = peer.call(peerId, localVideo.srcObject);
+            call.on("stream", (remoteStream) => {
+                remoteVideo.srcObject = remoteStream;
+            });
+        }
+    </script>
+</body>
+</html>
