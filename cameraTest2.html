@@ -5,10 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WebRTC Stream Receiver</title>
     <style>
+        /* Styling the video element to be smaller */
         #video {
-            width: 640px;
-            height: 360px;
-            border: 1px solid black;
+            width: 320px;  /* Set the width */
+            height: 180px; /* Set the height */
+            border: 1px solid black; /* Optional: Add border around video */
+            background-color: black; /* Optional: Set background color when video is not playing */
         }
     </style>
 </head>
@@ -29,9 +31,10 @@
             }
 
             pc = new RTCPeerConnection({
-                iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+                iceServers: [{ urls: "stun:stun.l.google.com:19302" }]  // Google STUN server
             });
 
+            // Request video only (important for the Python server)
             const offerOptions = {
                 offerToReceiveAudio: false,
                 offerToReceiveVideo: true
@@ -41,6 +44,7 @@
                 const offer = await pc.createOffer(offerOptions);
                 await pc.setLocalDescription(offer);
 
+                // Send offer to WebRTC server (Python)
                 const ws = new WebSocket("ws://localhost:8765");
 
                 ws.onopen = () => {
@@ -54,6 +58,7 @@
                     await pc.setRemoteDescription(new RTCSessionDescription(answer));
                 };
 
+                // Handle incoming video stream
                 pc.ontrack = (event) => {
                     console.log("✅ Video stream received!");
                     videoElement.srcObject = event.streams[0];
@@ -62,29 +67,6 @@
                 pc.oniceconnectionstatechange = () => {
                     console.log(`ICE Connection State: ${pc.iceConnectionState}`);
                 };
-
-                // Get video stream with higher constraints
-                const constraints = {
-                    video: {
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 },
-                        frameRate: { ideal: 30 }
-                    }
-                };
-
-                navigator.mediaDevices.getUserMedia(constraints).then((stream) => {
-                    const videoTrack = stream.getVideoTracks()[0];
-                    pc.addTrack(videoTrack, stream);
-
-                    // Adjust the bitrate (2 Mbps for max)
-                    const sender = pc.getSenders().find(sender => sender.track.kind === 'video');
-                    const parameters = sender.getParameters();
-                    if (!parameters.encodings) {
-                        parameters.encodings = [{}];
-                    }
-                    parameters.encodings[0].maxBitrate = 2 * 1000 * 1000; // 2 Mbps
-                    sender.setParameters(parameters);
-                });
 
             } catch (error) {
                 console.error("❌ WebRTC Error:", error);
